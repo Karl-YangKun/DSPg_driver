@@ -1,40 +1,37 @@
+/*******The interface is for dspg system. After initialization in application, it will be used when dspg system run.**********/
+
 #ifndef DSPG_H_
 #define DSPG_H_
 
+#include "DSPg_config.h"
 #include <stdlib.h>
-
-typedef bool (*write_data)(char *data,uint16 data_size);
-typedef bool (*read_data)(char *data,uint16 *data_size);
-typedef void (*delay)(uint16 ms);
-
-
-
+#include <stdio.h>
 
 typedef struct
 {
-    write_data Write;
+    //write data 
+    bool (*Write)(const uint8 *data,uint32 data_size);
+    //read data 
+    bool (*Read)(uint8 *data,uint16 data_size);
+    //time delay 
+    void (*Delay)(uint16 ms);
+    //pull io high or low 
+    void (*Set_IO)(dspg_io_t io, bool high);
+    //print log
+    void (*Debug)( const char *format, va_list args);
+    
+    //the type of communication between host and dspg
+    comm_inf_t comm;
+    //frameware data and size
+    source_t fw;
+    //usecase file data and size
+    source_t use_case[dspg_max_mode];
 
-    read_data Read;
+} interface_t;
 
-    delay Delay;
-} Interface_t;
-
-typedef struct
-{
-    const uint8 *fw;
-    const uint8 *use_case[2];
-} File_Source_t;
-
-typedef enum
-{
-    dspg_idle,
-    dspg_voice_call
-} DSPg_Usecase_t;
-
-void DSPg_SetInterface(Interface_t inf);
-
-bool DSPg_Init(File_Source_t source);
-
-bool DSPg_SetMode(DSPg_Usecase_t mode);
+//Initialize the dspg system
+bool DSPg_Init(interface_t interfaces);
+//Enter usecase or exit 
+bool DSPg_SetMode(usecase_t mode);
 
 #endif /* DSPG_H_ */
