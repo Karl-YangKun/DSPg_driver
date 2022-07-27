@@ -1,17 +1,18 @@
 #include  "DSPg_driver/DSPg.h"
-#include "sink_dspg.h"
-#include "sink_debug.h"
+#include "headset_dspg.h"
 
 #include <bitserial_api.h>
 #include <panic.h>
+#include <logging.h>
+#include <stdio.h>
 
 /**************************config********************************/
 //io config
-#define DSPG_RESET_IO   16
-#define DSPG_SPI_CS_IO   17
-#define DSPG_SPI_CLK_IO   18
-#define DSPG_SPI_IN_IO   20
-#define DSPG_SPI_OUT_IO   19
+#define DSPG_RESET_IO   60
+#define DSPG_SPI_CS_IO   15
+#define DSPG_SPI_CLK_IO   20
+#define DSPG_SPI_IN_IO   14
+#define DSPG_SPI_OUT_IO   21
 
 #define USING_COMM    SPI
 #define SPI_BLOCK_SIZE  0XFFFF  //the limmit block size for each writing using spi
@@ -23,26 +24,26 @@
 
 
 
-static bool sinkWrite(const uint8 *data,uint32 data_size);
-static bool sinkRead(uint8 *data,uint16 data_size);
-static void sinkDelayMs(uint16 ms);
-static void sinkSetPio(dspg_io_t map_io, bool high);
-static void sinkDebug( const char *format, uint8 n_args, va_list args);
+static bool headsetDspg_Write(const uint8 *data,uint32 data_size);
+static bool headsetDspg_Read(uint8 *data,uint16 data_size);
+static void headsetDspg_DelayMs(uint16 ms);
+static void headsetDspg_SetPio(dspg_io_t map_io, bool high);
+static void headsetDspg_Debug( const char *format, uint8 n_args, va_list args);
 
-bitserial_handle spi_handle;
+bitserial_handle comm_handle;
 
-static interface_t sink_inf=
+static interface_t headset_inf=
 {
     .comm = USING_COMM,
-    .Write = sinkWrite,
-    .Read = sinkRead,
-    .Delay = sinkDelayMs,
-    .Set_IO = sinkSetPio,
-    .Debug = sinkDebug,
+    .Write = headsetDspg_Write,
+    .Read = headsetDspg_Read,
+    .Delay = headsetDspg_DelayMs,
+    .Set_IO = headsetDspg_SetPio,
+    .Debug = headsetDspg_Debug,
 };
 
 
-static bool sinkSPIInit(void)
+static bool headsetDspg_SPIInit(void)
 {
     bitserial_config bsconfig;
     uint16 bank;
@@ -77,11 +78,11 @@ static bool sinkSPIInit(void)
     bsconfig.u.spi_cfg.clock_sample_offset = 0;
     bsconfig.u.spi_cfg.select_time_offset = 0;
     bsconfig.u.spi_cfg.flags = BITSERIAL_SPI_MODE_0;
-    spi_handle =  BitserialOpen((bitserial_block_index)BITSERIAL_BLOCK_0, &bsconfig);
-    return (spi_handle !=BITSERIAL_HANDLE_ERROR);
+    comm_handle =  BitserialOpen((bitserial_block_index)BITSERIAL_BLOCK_0, &bsconfig);
+    return (comm_handle !=BITSERIAL_HANDLE_ERROR);
 }
 
-static bool sinkWrite(const uint8 *data,uint32 data_size)
+static bool headsetDspg_Write(const uint8 *data,uint32 data_size)
 {
     bitserial_result result;
 
@@ -92,7 +93,7 @@ static bool sinkWrite(const uint8 *data,uint32 data_size)
         {
             if((data_size-written)>SPI_BLOCK_SIZE)
             {
-                result = BitserialWrite(spi_handle,
+                result = BitserialWrite(comm_handle,
                             BITSERIAL_NO_MSG,
                             data+written, SPI_BLOCK_SIZE,
                             BITSERIAL_FLAG_BLOCK );
@@ -100,7 +101,7 @@ static bool sinkWrite(const uint8 *data,uint32 data_size)
             }
             else
             {
-                result = BitserialWrite(spi_handle,
+                result = BitserialWrite(comm_handle,
                             BITSERIAL_NO_MSG,
                             data+written, data_size-written,
                             BITSERIAL_FLAG_BLOCK );
@@ -109,7 +110,7 @@ static bool sinkWrite(const uint8 *data,uint32 data_size)
         }while (written != data_size);
     }
     else
-        result = BitserialWrite(spi_handle,
+        result = BitserialWrite(comm_handle,
                             BITSERIAL_NO_MSG,
                             data, data_size,
                             BITSERIAL_FLAG_BLOCK );
@@ -117,24 +118,24 @@ static bool sinkWrite(const uint8 *data,uint32 data_size)
     return(result == BITSERIAL_RESULT_SUCCESS);
 }
 
-static bool sinkRead(uint8 *data,uint16 data_size)
+static bool headsetDspg_Read(uint8 *data,uint16 data_size)
 {
     bitserial_result result;
-    result = BitserialRead(spi_handle,
+    result = BitserialRead(comm_handle,
                             BITSERIAL_NO_MSG,
                             data, data_size,
                             BITSERIAL_FLAG_BLOCK );
     return (result == BITSERIAL_RESULT_SUCCESS);
 }
 
-static void sinkDelayMs(uint16 ms)
+static void headsetDspg_DelayMs(uint16 ms)
 {
      /* 1 ms */
     uint32 n = VmGetClock();
         while(VmGetClock() < ( n + ms ));
 }
 
-static void sinkSetPio(dspg_io_t map_io, bool high)
+static void headsetDspg_SetPio(dspg_io_t map_io, bool high)
 {
     uint32 io=0;
     if(map_io == reset_io)
@@ -147,15 +148,14 @@ static void sinkSetPio(dspg_io_t map_io, bool high)
         PanicNotZero(PioSet32Bank(bank, mask, 0));
 }
 
-static void sinkDebug( const char *format, uint8 n_args, va_list args)
+static void headsetDspg_Debug( const char *format, uint8 n_args, va_list args)
 {
-    UNUSED(n_args);
-    vprintf(format,args);
-    DEBUG(("\n"));
+    hydra_log_firm_va_arg(format, n_args, args);
 }
 
-void sinkDspgInit(void)
+bool HeadsetDspg_Init(Task init_task)
 {
+    UNUSED(init_task);
     uint16 bank;
     uint32 mask;
 
@@ -164,26 +164,28 @@ void sinkDspgInit(void)
     PanicNotZero(PioSetMapPins32Bank(bank, mask, mask));
     PanicNotZero(PioSetDir32Bank(bank, mask, mask));
 
-    sink_inf.fw.data=fw_array;
-    sink_inf.fw.data_size=SinkDspgConfig_getSize (1);
-    sink_inf.fw.config=fw_config;
-    sink_inf.fw.config_size=SinkDspgConfig_getSize (2);
+    headset_inf.fw.data=fw_array;
+    headset_inf.fw.data_size=HeadsetDspg_getSize (1);
+    headset_inf.fw.config=fw_config;
+    headset_inf.fw.config_size=HeadsetDspg_getSize (2);
 
-    sink_inf.use_case[dspg_voice_call].data=model_array;
-    sink_inf.use_case[dspg_voice_call].data_size=SinkDspgConfig_getSize (3);
-    sink_inf.use_case[dspg_voice_call].config=model_config;
-    sink_inf.use_case[dspg_voice_call].config_size=SinkDspgConfig_getSize (4);
+    headset_inf.use_case[dspg_voice_call].data=model_array;
+    headset_inf.use_case[dspg_voice_call].data_size=HeadsetDspg_getSize (3);
+    headset_inf.use_case[dspg_voice_call].config=model_config;
+    headset_inf.use_case[dspg_voice_call].config_size=HeadsetDspg_getSize (4);
 
-    sinkSPIInit();
-    DSPg_Init(sink_inf);
+    headsetDspg_SPIInit();
+    DSPg_Init(headset_inf);
+
+    return TRUE;
 }
 
-void sinkDspgEnterVcMode(void)
+void HeadsetDspg_EnterVcMode(void)
 {
     DSPg_SetMode(dspg_voice_call);
 }
 
-void sinkDspgExitVcMode(void)
+void HeadsetDspg_ExitVcMode(void)
 {
     DSPg_SetMode(dspg_idle);
 }

@@ -1,13 +1,12 @@
 #include "DSPg.h"
 #include "DSPg_interface.h"
 
-
 void DSPg_Delay(uint16 ms);
 void DSPg_Write(const uint8 *data,uint32 data_size);
 void DSPg_WriteReg(uint32 reg,uint32 data,ins_t mode);
 void DSPg_Read(uint8 *data,uint16 data_size);
 void DSPg_ReadReg(uint32 reg,uint32 *data,ins_t mode);
-void DSPg_Log(const char *format, ...);
+void DSPg_Log(uint8 n_args, const char *format,  ...);
 void DSPg_SetIO(dspg_io_t io, bool high);
 void DSPg_ProcessConfigTable(const config_table_t *tbl,uint16 tbl_size);
 comm_inf_t DSPg_GetCommType(void);
@@ -61,11 +60,11 @@ static uint16 atoh__(const char *String)
 	return Value;
 }
 
-void DSPg_Log(const char *format, ...)
+void DSPg_Log(uint8 n_args, const char *format, ...)
 {
     va_list arg;
     va_start(arg, format);
-    inf.Debug(format,arg);
+    inf.Debug(format,n_args,arg);
     va_end(arg);
 }
 

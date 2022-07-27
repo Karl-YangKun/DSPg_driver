@@ -18,7 +18,7 @@ typedef struct
     //pull io high or low 
     void (*Set_IO)(dspg_io_t io, bool high);
     //print log
-    void (*Debug)( const char *format, va_list args);
+    void (*Debug)( const char *format,uint8 n_args, va_list args);
     
     //the type of communication between host and dspg
     comm_inf_t comm;
