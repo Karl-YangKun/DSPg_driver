@@ -4,6 +4,8 @@
 #include "DSPg_config.h"
 #include <stdio.h>
 
+#define VA_NARGS_IMPL(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, N, ...) N
+#define VA_NARGS(...) VA_NARGS_IMPL(__VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, _bonus_as_no_ellipsis)
 
 /*************************interface to dspg system******************************/
 //the varible will be gotten by dspg systen, and using it init chip, enter and exit usecase 
@@ -25,7 +27,7 @@ extern void DSPg_Write(const uint8 *data,uint32 data_size);
 extern void DSPg_WriteReg(uint32 reg,uint32 data,ins_t mode);
 extern void DSPg_Read(uint8 *data,uint16 data_size);
 extern void DSPg_ReadReg(uint32 reg,uint32 *data,ins_t mode);
-extern void DSPg_Log(const char *format, ...);
+extern void DSPg_Log(uint8 n_args, const char *format,  ...);
 extern void DSPg_ProcessConfigTable(const config_table_t *tbl,uint16 tbl_size);
 extern void DSPg_SetIO(dspg_io_t io, bool high);
 extern comm_inf_t DSPg_GetCommType(void);
@@ -39,7 +41,7 @@ extern comm_inf_t DSPg_GetCommType(void);
 #define DELAY(ms) DSPg_Delay(ms)
 
 #ifdef ENABLE_DSPG_DEBUG
-#define DBM_DEBUG(...) DSPg_Log(__VA_ARGS__)
+#define DBM_DEBUG(...) DSPg_Log(VA_NARGS(__VA_ARGS__),__VA_ARGS__)
 #define DBM_DATA_DEBUG(data, data_size) 
 #else
 #define DBM_DEBUG(...)
