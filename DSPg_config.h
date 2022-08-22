@@ -7,7 +7,7 @@
 //config 
 #define TIME_IN_RESET   10   //maybe don't need
 #define TIME_AFTER_RESET    100  //at least 80ms
-#define ENABLE_RECONDIGx
+#define ENABLE_RECONDIG
 
 
 typedef enum

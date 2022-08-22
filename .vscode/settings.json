@@ -3,6 +3,7 @@
         "dspg.h": "c",
         "dspg_procedures.h": "c",
         "dspg_interface.h": "c",
-        "dspg_config.h": "c"
+        "dspg_config.h": "c",
+        "headset_dspg.h": "c"
     }
 }

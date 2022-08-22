@@ -9,27 +9,20 @@ handler_t DSPg_GetHander(void);
 const config_table_t model_pre_config[]=
 {
     0,0x018,0x000a,5,
-    0,0x304,0x2000,5,
-    0,0x00f,0x18c0,5,
-    0,0x304,0x4000,5,
-    0,0x00f,0x28c0,5,
     0,0x018,0x000a,5,
-    1,0x01d,0x00000600UL,5,
-    1,0x010,0x0d03b000UL,100,
-    0,0x304,0x0000,5,
-    0,0x018,0x0004,5,
-    0,0x00f,0x40c4,5
+    1,0x01d,0x0600,5,
+    1,0x010,0x0d027000UL,100,
+    00,0x00f,0x40c4,5
 };
 
 const config_table_t recording_config[]=
 {
-    0,0x018,0x000a,5,
-    0,0x031,0x0308,5,
-    0,0x018,0x0005,5,
+    0,0x128,0x011,5,
+    0,0x129,0x0001,5,
     0,0x005,0x0000,5,
     0,0x006,0x0000,5,
-    0,0x007,0x1f00,5,
-    0,0x030,0x801e,5,
+    0,0x007,0x0000,5,
+    0,0x030,0x800e,5, 
     0,0x030,0x0001,5
 };
 
@@ -94,11 +87,11 @@ static bool D10L_CheckError(void)
     return TRUE;
 }
 
-//send some code before loading fw
+//send boot commands before loading fw
 static void D10L_PreBootPowerUp(void)
 {
     char send_buf_2[] = {0};
-    DBM_DEBUG("--D10L_PreBootPowerUp, send some operate code");
+    DBM_DEBUG("--D10L_PreBootPowerUp, send boot commands");
     WRITE(send_buf_2, sizeof(send_buf_2));
     DELAY(20);
     char send_buf[] = {0x5A, /*HEADER_BYTE*/
