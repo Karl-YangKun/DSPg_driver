@@ -14,6 +14,11 @@
 #define DSPG_SPI_IN_IO   14
 #define DSPG_SPI_OUT_IO   21
 
+#define i2s_cs_io    17
+#define i2s_clk_io   16
+#define i2s_in_io       19
+#define i2s_out_io   18
+
 #define USING_COMM    SPI
 #define SPI_BLOCK_SIZE  0XFFFF  //the limmit block size for each writing using spi
 
@@ -31,6 +36,7 @@ static void headsetDspg_SetPio(dspg_io_t map_io, bool high);
 static void headsetDspg_Debug( const char *format, uint8 n_args, va_list args);
 
 bitserial_handle comm_handle;
+TaskData dspg_task_data;
 
 static interface_t headset_inf=
 {
@@ -153,6 +159,21 @@ static void headsetDspg_Debug( const char *format, uint8 n_args, va_list args)
     hydra_log_firm_va_arg(format, n_args, args);
 }
 
+
+static void headsetDspg_MessageHandler(Task task, MessageId id, Message message)
+{
+    UNUSED(task);
+    UNUSED(message);
+    switch (id)
+    {
+    case 0x1234:
+        DSPg_SetMode(dspg_voice_call);
+        break;
+    default:break;
+
+    }
+}
+
 bool HeadsetDspg_Init(Task init_task)
 {
     UNUSED(init_task);
@@ -174,18 +195,74 @@ bool HeadsetDspg_Init(Task init_task)
     headset_inf.use_case[dspg_voice_call].config=model_config;
     headset_inf.use_case[dspg_voice_call].config_size=HeadsetDspg_getSize (4);
 
+    bank = PIO2BANK(i2s_in_io);
+    mask = PIO2MASK(i2s_in_io);
+
+//    PanicFalse(PioSetFunction(i2s_in_io, PIO));
+    PioSetMapPins32Bank(bank, mask, mask);
+    PioSet32Bank(bank, mask, 0);
+    PioSetDir32Bank(bank, mask, 0);
+
+
     headsetDspg_SPIInit();
     DSPg_Init(headset_inf);
+
+    PioSetMapPins32Bank(bank, mask, 0);
+    PanicFalse(PioSetFunction(i2s_in_io, OTHER));
+//    PanicFalse(PioSetFunction(i2s_in_io, PCM_IN));
+//    PioSetFunction(i2s_out_io, PCM_OUT);
+//    PioSetFunction(i2s_cs_io, PCM_SYNC);
+//    PioSetFunction(i2s_clk_io, PCM_CLK);
+
+    dspg_task_data.handler=headsetDspg_MessageHandler;
 
     return TRUE;
 }
 
 void HeadsetDspg_EnterVcMode(void)
 {
-    DSPg_SetMode(dspg_voice_call);
+    //enter later becase it need waiting clock
+    MessageSendLater(&dspg_task_data,0x1234,0,200);
 }
 
 void HeadsetDspg_ExitVcMode(void)
 {
     DSPg_SetMode(dspg_idle);
 }
+
+const pcm_config_t dspg_pcm_config =
+{
+    .sample_rate = 48000,       // lis25ba always runs with 16k. If general mic rate shall be used, set to 0
+    .master_mode = 1,           // accelorometer should always be the slave
+    .sample_size = 16,
+    .slot_count = 2,
+    .short_sync_enable = 1,
+    .lsb_first_enable = 0,
+    .sample_rising_edge_enable = 1,
+    .sample_format = 0,         // 16 bits in 16 cycle slot duration
+    .master_clock_source = CLK_SOURCE_TYPE_MCLK,
+    .master_mclk_mult = 0,
+};
+
+const pcm_config_t *headsetDspg_GetPcmInterfaceSettings(void)
+{
+    return &dspg_pcm_config;
+}
+
+static const pcm_callbacks_t headsetDspg_Callbacks =
+{
+    /*! \brief Returns PCM interface settings for this device */
+    .AudioPcmCommonGetPcmInterfaceSetting = headsetDspg_GetPcmInterfaceSettings,
+    /*! \brief Initialize I2C communication interface for this device */
+    .AudioPcmCommonInitializeI2cInterface = NULL,
+    /*! \brief Enable the device by writing  commands */
+    .AudioPcmCommonEnableDevice = HeadsetDspg_EnterVcMode,
+    /*! \brief Disable the device by writing commands */
+    .AudioPcmCommonDisableDevice = HeadsetDspg_ExitVcMode,
+};
+
+const pcm_registry_per_user_t headsetDspg_Registry =
+{
+    .user = pcm_user,
+    .callbacks = &headsetDspg_Callbacks,
+};
