@@ -33,19 +33,33 @@ const config_table_t recording_config[]=
     0,0x030,0x0001,5
 };
 
+const config_table_t exit_recording_config[]=
+{
+    0,0x030,0x0,5,
+    0,0x030,0x8400,5,
+    0,0x128,0x0000,5,
+    0,0x129,0x0000,5,
+};
+
 const config_table_t exit_usecase_config[]=
 {
-    0,0x031,0x0001,10,
+    //reset tdms
     0,0x031,0x0001,10,
     0,0x037,0x0000,5,
     0,0x036,0x0000,5,
     0,0x031,0x0000,5,
     0,0x037,0x0000,5,
+    0,0x036,0x0000,100,
+
     0,0x034,0x0000,5,
+    0,0x00f,0x48c4,5,
     0,0x023,0x0000,5,
-    0,0x025,0x0000,5,
+//    0,0x025,0x0000,5,
     0,0x024,0x0000,5,
-    0,0x304,0x0000,5
+    0,0x304,0x0000,5,
+    0,0x01b,0x0020,50,
+    1,0x010,0x9011000UL,100,
+    0,0x1f,0x0000,5,
 };
 
 /*************************interface for dspg system******************************/
@@ -260,8 +274,12 @@ static bool D10L_EnterUseCase(usecase_t ucase,source_t model)
 
 static bool D10L_ExitUseCase(void)
 {
-    uint16 size = sizeof(exit_usecase_config)/sizeof(config_table_t);
-    DBM_DEBUG("--D10L_ExitUseCase,enter idle mode");
+    uint16 size = sizeof(exit_recording_config)/sizeof(config_table_t);
+    DSPg_ProcessConfigTable(exit_recording_config,size);
+
+    size = sizeof(exit_usecase_config)/sizeof(config_table_t);
     DSPg_ProcessConfigTable(exit_usecase_config,size);
+
+    DBM_DEBUG("--D10L_ExitUseCase,enter idle mode");
     return TRUE;
 }
