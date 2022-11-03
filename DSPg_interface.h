@@ -16,6 +16,10 @@ typedef struct
     bool (*load_uc)(usecase_t ucase,source_t model);
 
     bool (*exit_uc)(void);
+
+    bool (*enter_hibernate)(void);
+
+    bool (*exit_hibernate)(void);
 } handler_t;
 
 extern handler_t DSPg_GetHander(void);

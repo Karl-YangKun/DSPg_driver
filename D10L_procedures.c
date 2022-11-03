@@ -4,28 +4,31 @@
 static bool D10L_Init(const source_t fw);
 static bool D10L_EnterUseCase(usecase_t ucase,source_t model);
 static bool D10L_ExitUseCase(void);
+static bool D10L_EnterHibernate(void);
+static bool D10L_ExitHibernate(void);
 handler_t DSPg_GetHander(void);
 
 const config_table_t model_pre_config[]=
 {
-    0,0x018,0x000a,5,
-    // 0,0x304,0x2000,5,
-    // 0,0x00f,0x18c0,5,
-    // 0,0x304,0x4000,5,
-    // 0,0x00f,0x28c0,5,
-    0,0x018,0x000a,5,
-    1,0x01d,0x0600,5,
-//    1,0x01d,0x00000600UL,5,
-    1,0x010,0x0d027000UL,100,//0x0d039000UL
-//    0,0x304,0x0000,5,
-//    0,0x018,0x0004,5,
-    00,0x00f,0x40c4,5
+    0x10,0x041,0,5,
+    0x10,0x081,0,5,
+    0,0x02b,0x0225,50,
+    0,0x005,0x0044,5,
+    0,0x006,0x0300,5,
+    0x10,0x007,0,5,
+    0x10,0x008,0,5,
+    0,0x01d,0x0600,5,
+    0x10,0x023,0,5,
+    1,0x010,0x0d039000UL,100,//0x0d039000UL
+    0x10,0x01e,0,5,
+    0,0x304,0x0000,5,
+    00,0x00f,0x41c4,5
 };
 
 const config_table_t recording_config[]=
 {
     0,0x128,0x011,5,
-    0,0x129,0x0001,5,
+    0,0x129,0x0001,20,
     0,0x005,0x0000,5,
     0,0x006,0x0000,5,
     0,0x007,0x0000,5,
@@ -35,30 +38,38 @@ const config_table_t recording_config[]=
 
 const config_table_t exit_recording_config[]=
 {
-    0,0x030,0x0,5,
-    0,0x030,0x8400,5,
+    // 0,0x030,0x0,5,
+    // 0,0x030,0x8400,5,
     0,0x128,0x0000,5,
     0,0x129,0x0000,5,
+    0,0x005,0x0000,5,
+    0,0x006,0x0000,5,
+    0,0x007,0x0000,5,
+    0,0x030,0x0000,5, //0x8008
+    0,0x030,0x8400,5
 };
 
 const config_table_t exit_usecase_config[]=
 {
+    0,0x031,0x0001,10,
+    0,0x031,0x0000,5,
+    0,0x01b,0x0020,50,
+    1,0x010,0x09013000UL,100,
+    0,0x00c,0x8bb8,5,
     //reset tdms
     0,0x031,0x0001,10,
     0,0x037,0x0000,5,
     0,0x036,0x0000,5,
     0,0x031,0x0000,5,
     0,0x037,0x0000,5,
-    0,0x036,0x0000,100,
+    0,0x036,0x0000,10,
 
     0,0x034,0x0000,5,
     0,0x00f,0x48c4,5,
     0,0x023,0x0000,5,
-//    0,0x025,0x0000,5,
+    0,0x025,0x0000,5,
     0,0x024,0x0000,5,
     0,0x304,0x0000,5,
-    0,0x01b,0x0020,50,
-    1,0x010,0x9011000UL,100,
     0,0x1f,0x0000,5,
 };
 
@@ -69,6 +80,8 @@ handler_t  handler=
                     .init = D10L_Init,
                     .load_uc = D10L_EnterUseCase,
                     .exit_uc  = D10L_ExitUseCase,
+                    .enter_hibernate = D10L_EnterHibernate,
+                    .exit_hibernate = D10L_ExitHibernate,
                 };
 
 handler_t DSPg_GetHander(void)
@@ -113,7 +126,7 @@ static void D10L_PreBootPowerUp(void)
 {
     char send_buf_2[] = {0};
     DBM_DEBUG("--D10L_PreBootPowerUp, send boot commands");
-    WRITE(send_buf_2, sizeof(send_buf_2));
+    WRITE(send_buf_2, sizeof(send_buf_2)); //sync for d10l
     DELAY(20);
     char send_buf[] = {0x5A, /*HEADER_BYTE*/
                         0x02, /*OP_CODE*/
@@ -122,12 +135,46 @@ static void D10L_PreBootPowerUp(void)
                         0xCD, 0xAB, /*MAGIC_NUM*/
                         0x03, 0x00, /*VALID_MASK*/
                         0x01, 0x00,/*EN_EVENTS #value of register 0x12 - only for power up event*/
-                        0x8E, 0x00 /*GPIO_CFG*/};
+                        0x8c, 0x8b /*GPIO_CFG*/};
     WRITE(send_buf, sizeof(send_buf));
+
+    // DELAY(20);
+    // char send_buf2[] = {0x5A, /*HEADER_BYTE*/
+    //                     0x04, /*OP_CODE*/
+    //                     0x90, 0x00, 0x00, 0x03, /*NUM_OF_WORDS*/
+    //                     0xa5, 0x52, 0x55, 0x55/*ADDR*/};
+    // WRITE(send_buf2, sizeof(send_buf2));
+
+    // DELAY(20);
+    // char send_buf3[] = {0x5A, /*HEADER_BYTE*/
+    //                     0x04, /*OP_CODE*/
+    //                     0x94, 0x00, 0x00, 0x03, /*NUM_OF_WORDS*/
+    //                     0xa5, 0x52, 0x55, 0x15/*ADDR*/};
+    // WRITE(send_buf3, sizeof(send_buf3));
+
+    // DELAY(20);
+    // char send_buf4[] = {0x5A, /*HEADER_BYTE*/
+    //                     0x04, /*OP_CODE*/
+    //                     0x29, 0x00, 0x00, 0x03, /*NUM_OF_WORDS*/
+    //                     0x00, 0x00, 0x03, 0x00/*ADDR*/};
+    // WRITE(send_buf4, sizeof(send_buf4));
 
     send_buf[0] = 0x5A;
     send_buf[1] = 0x0F;
     WRITE(send_buf, 2);
+}
+
+static void D10L_ReadID(void)
+{
+    uint8 id[6]={0};
+    char RegSet[5] = {0};
+
+    uint8 len=sprintf(RegSet, "%03xr", 0x19);
+    RegSet[len]='\0';
+    DBM_DEBUG("--Read chip id");
+    WRITE(RegSet,len);
+    READ(id,5);
+    DBM_DEBUG("--ID:%s",(char*)&id[1]);
 }
 
 static bool D10L_LoadFw(const source_t fw)
@@ -163,21 +210,14 @@ static bool D10L_LoadFw(const source_t fw)
         DELAY(10);
 
         uint32 vers[3];
-        DBM_DEBUG("--Read version");
+        DBM_DEBUG("--Read FW version");
         READ_REG(0x0,&vers[0],r16d16);
         READ_REG(0x5,&vers[1],r16d16);
         READ_REG(0x6,&vers[2],r16d16);
         DBM_DEBUG("--The version: %x.%x.%x", vers[0],vers[1],vers[2]);
 
-        uint8 id[6]={0};
-        char RegSet[5] = {0};
+        D10L_ReadID();
 
-        uint8 len=sprintf(RegSet, "%03xr", 0x19);
-        RegSet[len]='\0';
-        DBM_DEBUG("--Read chip id");
-        WRITE(RegSet,len);
-        READ(id,5);
-        DBM_DEBUG("--ID:%s",(char*)&id[1]);
         return TRUE;
     }
     else
@@ -192,6 +232,13 @@ static void D10L_DefaultConfig(const source_t fw)
 {
     DBM_DEBUG("--Set default config");
     DSPg_ProcessConfigTable(fw.config,fw.config_size);
+
+    uint32 vers[3];
+    DBM_DEBUG("--Read FW version");
+    READ_REG(0x0,&vers[0],r16d16);
+    READ_REG(0x5,&vers[1],r16d16);
+    READ_REG(0x6,&vers[2],r16d16);
+    DBM_DEBUG("--The version: %x.%x.%x", vers[0],vers[1],vers[2]);
 }
 
 
@@ -221,6 +268,21 @@ static bool D10L_Init(const source_t fw)
     return TRUE;
 }
 
+
+static bool D10L_EnterHibernate(void)
+{
+    WRITE_REG(0x1,6,r16d16);
+
+    DBM_DEBUG("--D10L_EnterHibernate,enter hibernate mode");
+    return TRUE;
+}
+
+static bool D10L_ExitHibernate(void)
+{
+    DBM_DEBUG("--D10L_ExitHibernate,exit hibernate mode %d");
+    D10L_ReadID();
+    return TRUE;
+}
 
 static bool D10L_EnterUseCase(usecase_t ucase,source_t model)
 {
@@ -260,6 +322,13 @@ static bool D10L_EnterUseCase(usecase_t ucase,source_t model)
     WRITE(buf_run,2);
     DELAY(20);
     D10L_CheckError();
+
+    uint32 vers[3];
+    DBM_DEBUG("--Read ASRP version");
+    READ_REG(0x100,&vers[0],r16d16);
+    READ_REG(0x101,&vers[1],r16d16);
+    READ_REG(0x104,&vers[2],r16d16);
+    DBM_DEBUG("--The version: %x.%x.%x", vers[0],vers[1],vers[2]);
 
     if(ucase == dspg_voice_call)
     {

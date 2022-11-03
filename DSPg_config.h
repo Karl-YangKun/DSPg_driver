@@ -5,14 +5,16 @@
 #define ENABLE_DSPG_DEBUG
 
 //config 
-#define TIME_IN_RESET   10   //maybe don't need
+#define TIME_IN_RESET   10   //5
 #define TIME_AFTER_RESET    100  //at least 80ms
+#define TIME_IN_WAKEUP    60
 #define ENABLE_RECONDIG
 
 
 typedef enum
 {
     dspg_voice_call,
+    dspg_hibernate,
     dspg_idle,
 
     dspg_max_mode =dspg_idle,
@@ -34,7 +36,10 @@ typedef enum
 {
     r16d16 = 0,  //reg 16 bits, data 16 bits
     r16d32,
-    r32d32
+    r32d32,
+    read_r16d16 = 0x10,  //read reg 16bits
+    read_r16d32,
+    read_r32d32
 } ins_t;
 
 typedef struct

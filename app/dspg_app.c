@@ -151,9 +151,15 @@ static void dspgApp_SetPio(dspg_io_t map_io, bool high)
 {
     uint32 io=0;
     if(map_io == reset_io)
+    {
         io=RESET_IO;
+    }
     uint16 bank = PIO2BANK(io);
     uint32 mask = PIO2MASK(io);
+
+    PanicNotZero(PioSetMapPins32Bank(bank, mask, mask));
+    PanicNotZero(PioSetDir32Bank(bank, mask, mask));
+
     if(high)
         PanicNotZero(PioSet32Bank(bank, mask, mask));
     else

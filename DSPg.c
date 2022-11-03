@@ -14,6 +14,7 @@ comm_inf_t DSPg_GetCommType(void);
 
 handler_t dspg_handler;
 interface_t inf;
+usecase_t current_mode = dspg_idle;
 
 /*********************The below functions are APIs for application************************/
 //Initialize the dspg system
@@ -28,10 +29,43 @@ bool DSPg_Init(interface_t interfaces)
 //Enter usecase or exit 
 bool DSPg_SetMode(usecase_t mode)
 {
-    if(mode != dspg_idle)
-        return dspg_handler.load_uc(mode,inf.use_case[mode]);
-    else
-        return dspg_handler.exit_uc();
+    bool ret = FALSE;
+    if(mode == current_mode) return TRUE;
+
+    //exit mode
+    switch(current_mode)
+    {
+        case dspg_voice_call:
+            ret = dspg_handler.exit_uc();
+            break;
+
+        case dspg_hibernate:
+            ret = dspg_handler.exit_hibernate();
+            break;
+
+        default:
+            break;
+    }
+
+    //enter mode
+    switch (mode)
+    {
+        case dspg_voice_call:
+            ret = dspg_handler.load_uc(mode,inf.use_case[mode]);
+            break;
+
+        case dspg_hibernate:
+            ret = dspg_handler.enter_hibernate();
+            break;
+
+        default:
+            break;
+    }
+
+
+    if(ret)
+        current_mode = mode;
+    return ret;
 }
 
 
@@ -176,7 +210,15 @@ void DSPg_ProcessConfigTable(const config_table_t *tbl,uint16 tbl_size)
     {
         temp = tbl[i];
 
-        DSPg_WriteReg(temp.reg,temp.data,temp.form);
+        if(temp.form & 0x10)
+        {
+            uint32 data=0;
+            DSPg_ReadReg(temp.reg,&data,temp.form -0x10);
+        }
+        else
+            DSPg_WriteReg(temp.reg,temp.data,temp.form);
+
+        
         DELAY(temp.delay);
     }
 }
