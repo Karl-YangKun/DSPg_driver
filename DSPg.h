@@ -24,14 +24,18 @@ typedef struct
     comm_inf_t comm;
     //frameware data and size
     source_t fw;
-    //usecase file data and size
-    source_t use_case[dspg_max_mode];
+    //asrp file data and size
+    source_t asrp;
+    // acoustic model file data and size
+    source_t model;
 
 } interface_t;
 
 //Initialize the dspg system
-bool DSPg_Init(interface_t interfaces);
+bool DSPg_Init(interface_t *interfaces);
 //Enter usecase or exit 
 bool DSPg_SetMode(usecase_t mode);
+//Handle dspg interrupt
+trigger_word_t DSPg_InterruptHandler(void);
 
 #endif /* DSPG_H_ */
